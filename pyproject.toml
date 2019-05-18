@@ -7,13 +7,12 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-gym-holdem = "^0.1.0"
+keras = "^2.2"
+tensorflow = "^1.13"
+gym-holdem = {path = "../gym-holdem/dist/gym_holdem-0.1.0-py3-none-any.whl"}
 
 [tool.poetry.dev-dependencies]
 
-[[tool.poetry.source]]
-name = "pypi_test"
-url = "https://test.pypi.org/simple/"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

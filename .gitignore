@@ -227,4 +227,4 @@ dmypy.json
 .vscode/
 .venv/
 poetry.lock
-
+*.model
