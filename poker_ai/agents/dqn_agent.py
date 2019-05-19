@@ -2,11 +2,16 @@ import numpy as np
 import random
 
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, LSTM, TimeDistributed
 from keras.optimizers import Adam
+
+
+from tensorflow.keras.callbacks import TensorBoard
+
 
 from collections import deque
 
+tensorboard = TensorBoard(log_dir="logs/test_1")
 
 class DQNAgent:
     def __init__(self, env, player, gamma=0.95, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.995, learning_rate=0.01, tau=0.05):
@@ -28,15 +33,15 @@ class DQNAgent:
          
     def create_model(self):
         model = Sequential()
-        input_dim = len(self.env.observation_space(self.player))
-        model.add(Dense(24, input_dim=input_dim, activation="relu"))
-        model.add(Dense(48, activation="relu"))
-        model.add(Dense(24, activation="relu"))
+        #input_shape = self.env.observation_space(self.player).shape
+        model.add(LSTM(64,input_shape=(1, 16)))
+        model.add(Dense(100, activation="relu"))
+        model.add(Dense(200, activation="relu"))
+        model.add(Dense(100, activation="relu"))
         model.add(Dense(self.env.action_space.n, activation="softmax"))
         
         model.compile(loss="mean_squared_error",
             optimizer=Adam(lr=self.learning_rate))
-
         return model
     
     def act(self, observation):
@@ -44,16 +49,16 @@ class DQNAgent:
         self.epsilon = max(self.epsilon_min, self.epsilon)
         if np.random.random() < self.epsilon:
             return np.random.choice(self.env.valid_actions)
-        predictions = self.model.predict(observation)
+        observation = np.array(observation).reshape(1,1,16)
+        predictions = self.model.predict(observation)[0]
         for idx, prediction in enumerate(predictions):
-            if prediction not in self.env.valid_actions:
+            if idx not in self.env.valid_actions:
                 predictions[idx] = 0
         
         #nomalizing
         prescaler = 1/sum(predictions)
         predictions = [prescaler * prediction for prediction in predictions]
-        action = predictions[np.argmax(predictions)[0]]        
-
+        action = np.argmax(predictions)
         return action
         """
         self.epsilon *= self.epsilon_decay
@@ -90,15 +95,18 @@ class DQNAgent:
 
         samples = random.sample(self.memory, batch_size)
         for sample in samples:
-            state, action, reward, new_state, done = sample
-            target = self.target_model.predict(state)
+            observation, action, reward, new_observation, done = sample
+            observation = observation.reshape(1, 1, 16)
+            #observation = np.array([observation])
+            target = self.target_model.predict(observation)
             if done:
                 target[0][action] = reward
             else:
-                Q_future = max(self.target_model.predict(new_state)[0])
+                Q_future = max(self.target_model.predict(observation)[0])
                 target[0][action] = reward + Q_future * self.gamma
-        self.model.fit(state, target, epochs=1, verbose=0)
-
+        self.model.fit(observation, target, epochs=1, verbose=0)
+        #print(self.model.summary())
+        #exit()
     def target_train(self):
         weights = self.model.get_weights()
         target_weights = self.target_model.get_weights()
