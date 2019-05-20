@@ -1,18 +1,29 @@
 import gym
 import gym_holdem
 
+import sys
+
 from poker_ai.agents import DQNAgent
 
-epochs = 100
+epochs = 10000
 trial_len = 500
 
+
 def main():
+    model = ""
+    target_model = ""
+    print(sys.argv)
+    if len(sys.argv) >= 2:
+        model = sys.argv[1]
+    if len(sys.argv) >= 3:
+        target_model = sys.argv[2]
+
     env = gym.make("poker_ai_gym-v0")
     gamma = 0.9
     epsilon = .95
 
     # updateTargetNetwork = 1000
-    dqn_agents = [DQNAgent(env=env, player=env.players[idx]) for idx in range(env.player_amount)]
+    dqn_agents = [DQNAgent(env=env, player=env.players[idx], model_path=model, target_model_path=target_model) for idx in range(env.player_amount)]
     for epoch in range(epochs):
             print(f"### Epoch {epoch} ###")
             for idx, agent in enumerate(dqn_agents):
@@ -23,8 +34,8 @@ def main():
     highest_win_count = max(win_counts)
     best_agent_idx = win_counts.index(highest_win_count)
     best_agent = dqn_agents[best_agent_idx]
-    best_agent.save_model("best.model")
-    best_agent.save_target_model("best_target.model")
+    best_agent.save_model("trained_models/best_model.h5")
+    best_agent.save_target_model("trained_models/best_target_model.h5")
 
 
 def next_agent(dqn_agents, env):
@@ -40,14 +51,6 @@ def play_game(dqn_agents, env):
         dqn_agent = next_agent(dqn_agents, env)
 
         action = dqn_agent.act(cur_state)
-        if action == 0:
-            print(f"{dqn_agent.player.name}: FOLDED")
-        elif action == 1:
-            print(f"{dqn_agent.player.name}: CALLED")
-        elif action == 2:
-            print(f"{dqn_agent.player.name}: ALL_IN")
-        else:
-            print(f"{dqn_agent.player.name}: RAISED({action - 2})")
 
         new_state, reward, done, debug = env.step(action)
         env.render()

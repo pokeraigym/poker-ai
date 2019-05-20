@@ -5,21 +5,18 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, TimeDistributed
 from keras.optimizers import Adam
 
-
-from tensorflow.keras.callbacks import TensorBoard
-
+from keras.models import load_model
 
 from collections import deque
 
-tensorboard = TensorBoard(log_dir="logs/test_1")
 
 class DQNAgent:
-    def __init__(self, env, player, gamma=0.95, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.995, learning_rate=0.01, tau=0.05):
+    def __init__(self, env, player, gamma=0.95, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.995, learning_rate=0.01, tau=0.05, model_path="", target_model_path=""):
         self.env = env
         self.player = player
         self.win_count = 0
 
-        self.memory  = deque(maxlen=2000)
+        self.memory = deque(maxlen=2000)
         
         self.gamma = gamma
         self.epsilon = epsilon
@@ -28,16 +25,23 @@ class DQNAgent:
         self.learning_rate = learning_rate
         self.tau = tau
 
-        self.model = self.create_model()
-        self.target_model = self.create_model()
+        if model_path == "":
+            self.model = self.create_model()
+        else:
+            self.model = load_model(model_path)
+
+        if target_model_path == "":
+            self.target_model = self.create_model()
+        else:
+            self.target_model = load_model(target_model_path)
          
     def create_model(self):
         model = Sequential()
-        #input_shape = self.env.observation_space(self.player).shape
+        # input_shape = self.env.observation_space(self.player).shape
         model.add(LSTM(64,input_shape=(1, 16)))
-        model.add(Dense(100, activation="relu"))
-        model.add(Dense(200, activation="relu"))
-        model.add(Dense(100, activation="relu"))
+        model.add(Dense(128, activation="relu"))
+        model.add(Dense(256, activation="relu"))
+        model.add(Dense(128, activation="relu"))
         model.add(Dense(self.env.action_space.n, activation="softmax"))
         
         model.compile(loss="mean_squared_error",
@@ -49,41 +53,21 @@ class DQNAgent:
         self.epsilon = max(self.epsilon_min, self.epsilon)
         if np.random.random() < self.epsilon:
             return np.random.choice(self.env.valid_actions)
-        observation = np.array(observation).reshape(1,1,16)
+        observation = np.array(observation).reshape((1, 1, 16))
         predictions = self.model.predict(observation)[0]
         for idx, prediction in enumerate(predictions):
             if idx not in self.env.valid_actions:
                 predictions[idx] = 0
         
         #nomalizing
-        prescaler = 1/sum(predictions)
-        predictions = [prescaler * prediction for prediction in predictions]
-        action = np.argmax(predictions)
-        return action
-        """
-        self.epsilon *= self.epsilon_decay
-        self.epsilon = max(self.epsilon_min, self.epsilon)
-        if np.random.random() < self.epsilon:
-            return self.env.action_space.sample()
-        predictions = self.model.predict(observation)
-        for idx, prediction in enumerate(predictions):
-            if prediction not in env.valid_actions:
-                predictions[idx] = 0
-        
-        # normalizing
-        prescaler = 1/sum(predictions)
-        predictions = [prescaler * prediction for prediction in predictions]
-        action = predictions[np.argmax(predictions)[0]]
-
-        target = self.target_model.predict(observation)
-
-        if done:
-            target[0][action] = reward
+        sum_predictions = sum(predictions)
+        if sum_predictions != 0:
+            prescaler = 1/sum(predictions)
+            predictions = [prescaler * prediction for prediction in predictions]
+            action = np.argmax(predictions)
         else:
-            Q_future = max(self.target_model.predict(new_observation)[0])
-            target[0][action] = reward + Q_future * self.gamma
-        self.model.fit(observation, target, epochs=1, verbose=0)
-        """
+            action = 0
+        return action
 
     def remember(self, state, action, reward, new_state, done):
         self.memory.append([state, action, reward, new_state, done])
@@ -97,7 +81,7 @@ class DQNAgent:
         for sample in samples:
             observation, action, reward, new_observation, done = sample
             observation = observation.reshape(1, 1, 16)
-            #observation = np.array([observation])
+            # observation = np.array([observation])
             target = self.target_model.predict(observation)
             if done:
                 target[0][action] = reward
@@ -105,8 +89,8 @@ class DQNAgent:
                 Q_future = max(self.target_model.predict(observation)[0])
                 target[0][action] = reward + Q_future * self.gamma
         self.model.fit(observation, target, epochs=1, verbose=0)
-        #print(self.model.summary())
-        #exit()
+        # print(self.model.summary())
+        # exit()
     def target_train(self):
         weights = self.model.get_weights()
         target_weights = self.target_model.get_weights()
