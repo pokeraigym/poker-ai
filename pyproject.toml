@@ -9,7 +9,7 @@ license = "MIT"
 python = "^3.6"
 keras = "^2.2"
 tensorflow = "^1.13"
-gym-holdem = {path = "../gym-holdem/dist/gym_holdem-0.1.0-py3-none-any.whl"}
+gym-holdem = "^0.1"
 
 [tool.poetry.dev-dependencies]
 
