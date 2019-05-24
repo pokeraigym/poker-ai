@@ -3,9 +3,11 @@ import gym_holdem
 
 import sys
 
+from gym_holdem.envs.holdem_env import HoldemEnv
+
 from poker_ai.agents import DQNAgent
 
-epochs = 10000
+epochs = 1000
 trial_len = 500
 
 

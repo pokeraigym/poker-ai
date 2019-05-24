@@ -38,8 +38,9 @@ class DQNAgent:
     def create_model(self):
         model = Sequential()
         # input_shape = self.env.observation_space(self.player).shape
-        model.add(LSTM(64,input_shape=(1, 16)))
-        model.add(Dense(128, activation="relu"))
+        # model.add(LSTM(64,input_shape=(1, 16)))
+        input_dim = len(self.env.observation_space(self.player))
+        model.add(Dense(128, activation="relu", input_dim=input_dim))
         model.add(Dense(256, activation="relu"))
         model.add(Dense(128, activation="relu"))
         model.add(Dense(self.env.action_space.n, activation="softmax"))
@@ -53,8 +54,7 @@ class DQNAgent:
         self.epsilon = max(self.epsilon_min, self.epsilon)
         if np.random.random() < self.epsilon:
             return np.random.choice(self.env.valid_actions)
-        observation = np.array(observation).reshape((1, 1, 16))
-        predictions = self.model.predict(observation)[0]
+        predictions = self.model.predict(np.array([observation]))[0]
         for idx, prediction in enumerate(predictions):
             if idx not in self.env.valid_actions:
                 predictions[idx] = 0
@@ -80,8 +80,8 @@ class DQNAgent:
         samples = random.sample(self.memory, batch_size)
         for sample in samples:
             observation, action, reward, new_observation, done = sample
-            observation = observation.reshape(1, 1, 16)
-            # observation = np.array([observation])
+            # observation = observation.reshape(1, 1, 16)
+            observation = np.array([observation])
             target = self.target_model.predict(observation)
             if done:
                 target[0][action] = reward
